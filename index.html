@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Flying Car: simulating a flying Roadster</title>
+    <meta
+      name="description"
+      content="Fly a Roadster over five parked cars on cold-gas thrusters, with a barrel roll over a Semi. A physics simulation of the stunt, with every force it takes. Change the mass, height, range and roll and see if it still lands."
+    />
+    <meta name="theme-color" content="#07090d" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://flyingcar.pet/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="flyingcar.pet" />
+    <meta property="og:title" content="Flying Car: simulating a flying Roadster" />
+    <meta
+      property="og:description"
+      content="Fly a Roadster over five parked cars on cold-gas thrusters, with a barrel roll over a Semi, and see every force it takes."
+    />
+    <meta property="og:url" content="https://flyingcar.pet/" />
+    <meta property="og:image" content="https://flyingcar.pet/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="A white Roadster upside down in a barrel roll above a Semi and four other parked cars, at night."
+    />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Flying Car: simulating a flying Roadster" />
+    <meta
+      name="twitter:description"
+      content="Fly a Roadster over five parked cars on cold-gas thrusters, and see every force it takes."
+    />
+    <meta name="twitter:image" content="https://flyingcar.pet/og.png" />
+  </head>
+  <body>
+    <div id="viewport"></div>
+
+    <header class="topbar">
+      <h1 class="sr-only">Flying Car: simulating a flying Roadster</h1>
+      <a class="brand" href="/" aria-label="flyingcar.pet, start over">
+        <!-- include: src/partials/logo.html -->
+        <span class="wordmark">flyingcar<span class="tld">.pet</span></span>
+      </a>
+      <p class="tagline">Simulating a flying Roadster</p>
+      <nav class="top-actions" aria-label="Site">
+        <!-- In a row on wider screens; on a phone, the menu that ☰ opens. The pages to read
+             come after the simulation's own actions, quieter (and set apart in the menu). -->
+        <div id="site-menu" class="site-menu">
+          <button id="share-btn" class="chip" title="Copy a link to this exact flight">Share</button>
+          <button id="about-btn" class="chip" aria-haspopup="dialog">About</button>
+          <span class="menu-sep" aria-hidden="true"></span>
+          <!-- include: src/partials/site-links.html -->
+        </div>
+        <!-- On a phone, where the Tweak card is a sheet: Reset (only once something has
+             changed) and the button that opens the sheet. -->
+        <button id="reset-btn" class="chip phone-only reset-btn" title="Reset to the real stunt" hidden>↺ Reset</button>
+        <button id="tweak-btn" class="chip phone-only" aria-controls="tweak" aria-expanded="false">Tweak</button>
+        <button
+          id="lab-btn"
+          class="chip chip-accent"
+          aria-expanded="false"
+          aria-controls="lab"
+          title="Forces, results and every parameter (L)"
+        >
+          Lab
+        </button>
+        <button
+          id="menu-btn"
+          class="chip menu-btn"
+          aria-expanded="false"
+          aria-controls="site-menu"
+          aria-label="Menu"
+          title="Menu"
+        >
+          ☰
+        </button>
+      </nav>
+      <ul class="legend" id="legend" aria-label="Force arrow legend"></ul>
+    </header>
+
+    <div id="toast-host" class="toast-host"></div>
+    <div id="hud" class="hud" role="group" aria-label="Flight instruments"></div>
+    <div class="cue">
+      <p id="keyhint" class="keyhint" hidden></p>
+      <button id="launch" class="launch" hidden>▶ Launch</button>
+    </div>
+    <aside id="tweak" class="tweak" aria-label="Tweak the flight"></aside>
+    <section id="endcard" class="endcard" hidden aria-live="polite"></section>
+
+    <aside id="lab" class="lab" aria-label="Lab" hidden>
+      <div class="lab-head">
+        <div class="tabs" role="tablist">
+          <button role="tab" id="tab-live" aria-selected="true">Live</button>
+          <button role="tab" id="tab-results" aria-selected="false">Results</button>
+          <button role="tab" id="tab-params" aria-selected="false">Parameters</button>
+        </div>
+        <button id="lab-close" class="icon-btn" aria-label="Close the Lab">✕</button>
+      </div>
+      <div id="panel-host" class="lab-body"></div>
+    </aside>
+
+    <dialog id="about" class="about" aria-labelledby="about-title"></dialog>
+    <dialog id="reset-confirm" class="confirm" aria-labelledby="reset-confirm-title">
+      <form method="dialog">
+        <h2 id="reset-confirm-title">Reset to the real stunt?</h2>
+        <p>Your changes to the settings are lost. The flight model stays as it is.</p>
+        <div class="confirm-actions">
+          <button class="chip" value="cancel" autofocus>Cancel</button>
+          <button class="chip chip-accent" value="reset">Reset</button>
+        </div>
+      </form>
+    </dialog>
+
+    <footer class="dock">
+      <div class="transport">
+        <button id="play" class="play" aria-label="Play / pause" title="Play / pause (space)">▶</button>
+        <label class="speed"
+          ><span class="sr-only">Playback speed</span>
+          <select id="speed" title="Playback speed">
+            <option value="1" selected>1×</option>
+            <option value="0.5">½×</option>
+            <option value="0.25">¼×</option>
+            <option value="0.1">⅒×</option>
+          </select>
+        </label>
+        <span class="scrub-wrap" id="scrub-wrap"
+          ><input
+            id="scrub"
+            type="range"
+            min="0"
+            max="1"
+            step="0.0001"
+            value="0"
+            aria-label="Time"
+            title="Drag to scrub; ← → step a frame"
+        /></span>
+        <span id="clock" class="clock">+0.00 s</span>
+        <div class="cams" role="group" aria-label="Camera (C)">
+          <button data-cam="front" class="on" title="Wide view of the whole hop">Wide</button>
+          <button data-cam="video" title="Where the source video's front camera stood">Footage cam</button>
+          <button data-cam="end" title="Down the lane, from behind the launch">End-on</button>
+          <button data-cam="chase" title="Follow the car">Chase</button>
+          <button data-cam="top" title="From above">Top</button>
+        </div>
+        <button
+          id="footage-toggle"
+          class="chip"
+          aria-pressed="false"
+          title="Show the real video, synced to the simulation (F)"
+        >
+          Real footage
+        </button>
+        <div class="units" role="group" aria-label="Units">
+          <button data-units="imperial" aria-pressed="true">ft</button>
+          <button data-units="si" aria-pressed="false">m</button>
+        </div>
+        <button
+          id="charts-toggle"
+          class="chip charts-toggle"
+          aria-expanded="true"
+          aria-controls="charts"
+          title="Show or hide the charts"
+        >
+          Charts <span class="chev" aria-hidden="true">▾</span>
+        </button>
+      </div>
+      <!-- Where the charts don't all fit (they swipe), ‹ › page through them. -->
+      <div class="charts-pager">
+        <div class="charts" id="charts"></div>
+        <button class="pager prev" aria-label="Previous chart" hidden>‹</button>
+        <button class="pager next" aria-label="Next chart" hidden>›</button>
+      </div>
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

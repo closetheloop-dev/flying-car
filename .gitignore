@@ -1,0 +1,16 @@
+node_modules/
+dist/
+public/footage
+*.mp4
+*.swp
+*.swo
+**/footage/
+*.webm
+*.mov
+*.mkv
+.env*
+*.log
+coverage/
+.DS_Store
+*.tsbuildinfo
+.pnpm-store/

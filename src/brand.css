@@ -1,0 +1,73 @@
+/* Shared by the app and the pages: the design tokens and the logo and wordmark. */
+:root {
+  color-scheme: dark;
+  /* Night lot: deep blue-black, glass panels, cyan from the thruster plumes, LED red. */
+  --bg: #07090d;
+  --surface-0: #0b0f16;
+  --surface-1: #121823;
+  --surface-2: #1a2231;
+  --glass: rgba(11, 15, 22, 0.72);
+  --glass-strong: rgba(11, 15, 22, 0.9);
+  --border: rgba(150, 190, 255, 0.14);
+  --border-strong: rgba(150, 190, 255, 0.28);
+  --text-primary: #f2f6ff;
+  --text-secondary: #a9b4c7;
+  --text-muted: #6f7a8e;
+  --accent: #3fd0ff;
+  --accent-ink: #04141c;
+  --accent-soft: rgba(63, 208, 255, 0.16);
+  --led: #ff3d5a;
+  --status-critical: #ff5a6e;
+  --status-warn: #ffb547;
+  --status-good: #33d69f;
+  --radius: 12px;
+  --font-ui: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Rajdhani', 'Inter Variable', system-ui, sans-serif;
+  font: 13px/1.45 var(--font-ui);
+}
+
+.logo {
+  width: 40px;
+  height: 25px;
+  filter: drop-shadow(0 0 8px rgba(63, 208, 255, 0.35));
+}
+.logo-body {
+  fill: var(--text-primary);
+}
+.logo-glass {
+  fill: var(--bg);
+}
+.logo-plume {
+  fill: var(--accent);
+}
+.wordmark {
+  font: 700 24px/1 var(--font-display);
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
+}
+.wordmark .tld {
+  color: var(--accent);
+}
+
+/* A button that reads as a link. */
+.link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* A row that scrolls sideways fades out on the side that has more (ui/scroll-cue.ts sets
+   these): the dock's cameras and charts, the Guide's contents on a phone. */
+[data-more-right]:not([data-more-left]) {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+}
+[data-more-left]:not([data-more-right]) {
+  mask-image: linear-gradient(90deg, transparent, #000 28px);
+}
+[data-more-left][data-more-right] {
+  mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+}

@@ -1,0 +1,27 @@
+<header class="page-top">
+  <a class="brand" href="/" aria-label="flyingcar.pet, the simulation">
+    <!-- include: src/partials/logo.html -->
+    <span class="wordmark">flyingcar<span class="tld">.pet</span></span>
+  </a>
+  <!-- As the simulation's top bar (site-nav.css): the way back and About (where the
+       simulation has Share and About), then the site's links; on a phone they fold into
+       the ☰ menu (src/ui/site-menu.ts). -->
+  <nav class="top-actions" aria-label="Site">
+    <div id="site-menu" class="site-menu">
+      <a class="chip" href="/">Simulation</a>
+      <a class="chip" href="/about/">About</a>
+      <span class="menu-sep" aria-hidden="true"></span>
+      <!-- include: src/partials/site-links.html -->
+    </div>
+    <button
+      id="menu-btn"
+      class="chip menu-btn"
+      aria-expanded="false"
+      aria-controls="site-menu"
+      aria-label="Menu"
+      title="Menu"
+    >
+      ☰
+    </button>
+  </nav>
+</header>

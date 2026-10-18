@@ -1,0 +1,2225 @@
+@import './brand.css';
+@import './site-nav.css';
+
+:root {
+  --dock-h: 200px;
+  --top-h: 64px;
+}
+body.charts-collapsed {
+  --dock-h: 52px;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text-primary);
+}
+button,
+select,
+input {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.muted {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.small {
+  font-size: 12px;
+}
+
+/* The 3D view fills everything above the dock. */
+#viewport {
+  position: fixed;
+  inset: 0 0 var(--dock-h) 0;
+  transition: bottom 0.2s ease;
+}
+#viewport canvas {
+  display: block;
+}
+.labels {
+  position: absolute;
+  inset: 0;
+}
+
+/* Buttons (chips: site-nav.css) */
+.icon-btn,
+.transport select,
+.cams button,
+.units button {
+  background: var(--glass);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 13px;
+  cursor: pointer;
+  line-height: 1.2;
+  backdrop-filter: blur(10px);
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.icon-btn:hover,
+.cams button:hover,
+.units button:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+.cams button.on,
+.units button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 650;
+}
+/* On, but stepped aside for lack of room (main.ts fitFootage). */
+.chip[aria-pressed='true'].no-room {
+  background: transparent;
+  color: var(--accent);
+  border-style: dashed;
+}
+.icon-btn {
+  padding: 5px 9px;
+  border-radius: 8px;
+}
+
+/* ── Top bar ───────────────────────────────────────────────────────────── */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: 'brand tagline actions' 'legend legend legend';
+  align-items: center;
+  gap: 4px 16px;
+  padding: 12px 16px 0;
+}
+.topbar > * {
+  pointer-events: auto;
+}
+.brand {
+  grid-area: brand;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.tagline {
+  grid-area: tagline;
+  margin: 0;
+  color: var(--text-secondary);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+/* The site's links and the ☰ menu: site-nav.css. On a phone the bar also has Tweak (the
+   card is a sheet there) and Reset (once something changed). */
+.top-actions {
+  grid-area: actions;
+}
+.phone-only {
+  display: none;
+}
+/* Narrow phones: with Reset showing too, the wordmark makes room (the logo stays, and links home). */
+@media (max-width: 440px) {
+  .topbar:has(#reset-btn:not([hidden])) .wordmark {
+    display: none;
+  }
+}
+/* Reset, shown only once the settings differ from the stunt's: a filled button, in the
+   warning color, so the change it undoes is noticed. */
+.reset-btn {
+  background: rgba(255, 181, 71, 0.16);
+  border-color: rgba(255, 181, 71, 0.6);
+  color: var(--status-warn);
+  font-weight: 650;
+}
+.reset-btn:hover {
+  background: rgba(255, 181, 71, 0.26);
+  border-color: var(--status-warn);
+}
+.reset-btn[hidden] {
+  display: none !important;
+}
+@media (max-width: 700px), (max-height: 500px) {
+  .phone-only {
+    display: inline-flex;
+    align-items: center;
+  }
+  /* Above the footage window and the Tweak sheet while the menu is open. */
+  .topbar:has(.site-menu.open) {
+    z-index: 30;
+  }
+  /* Hidden until opened from the menu; a comparison being explored still shows. */
+  .tweak.collapsed .tweak-head {
+    display: none;
+  }
+  .tweak.collapsed:not(:has(> .explore:not([hidden]))) {
+    display: none;
+  }
+  .tweak.collapsed .explore {
+    border-bottom: 0;
+  }
+}
+.legend {
+  grid-area: legend;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  pointer-events: none;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend li[hidden] {
+  display: none;
+}
+.key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.arrow-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(11, 15, 22, 0.82);
+  color: var(--text-primary);
+  font-size: 11.5px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ── Flight HUD (bottom-left of the view) ──────────────────────────────── */
+.hud {
+  position: fixed;
+  left: 16px;
+  bottom: calc(var(--dock-h) + 14px);
+  z-index: 4;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  pointer-events: none;
+  transition: bottom 0.2s ease;
+}
+.hud-phase {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font: 700 12px/1.4 var(--font-display);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  white-space: nowrap;
+}
+.hud-phase.burn {
+  color: #ffd166;
+  border-color: rgba(255, 209, 102, 0.45);
+}
+.hud-phase.ground {
+  color: var(--text-secondary);
+}
+.gauge {
+  min-width: 92px;
+  padding: 7px 12px 8px;
+  border-radius: var(--radius);
+  background: var(--glass);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+.gauge-label {
+  font: 700 11px/1 var(--font-display);
+  letter-spacing: 1.6px;
+  color: var(--text-muted);
+}
+.gauge-value {
+  font: 700 30px/1.05 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  margin-top: 3px;
+}
+.gauge-unit {
+  font: 600 13px var(--font-display);
+  color: var(--text-secondary);
+  margin-left: 3px;
+}
+.gauge.hot .gauge-value {
+  color: #ffd166;
+}
+.gauge.danger .gauge-value {
+  color: var(--status-critical);
+}
+.roll-dial {
+  width: 64px;
+  height: 64px;
+  align-self: center;
+}
+.roll-dial .ring {
+  fill: var(--glass-strong);
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+.roll-dial .horizon {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.roll-dial .car {
+  fill: var(--text-primary);
+}
+.roll-dial .up {
+  fill: var(--accent);
+}
+.roll-dial text {
+  fill: var(--text-secondary);
+  font: 700 10px var(--font-display);
+}
+
+/* ── Launch / Replay ───────────────────────────────────────────────────── */
+.cue {
+  /* Just above the dock, right of the HUD (or centered if there is room): clear of the
+     line-up and the car in the Wide view. The key hint stacks above the button. */
+  position: fixed;
+  left: max(50%, calc(var(--hud-right, 0px) + 130px));
+  bottom: calc(var(--dock-h) + 18px);
+  z-index: 7;
+  transform: translateX(-50%); /* over the footage window where they meet */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+.cue > * {
+  pointer-events: auto;
+}
+/* Two short lines, no wider than Launch, so it fits wherever Launch does. */
+.keyhint {
+  margin: 0;
+  padding: 5px 11px;
+  border-radius: 10px;
+  white-space: nowrap;
+  display: grid;
+  gap: 3px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+  font: 500 12px/18px var(--font-ui);
+  color: var(--text-secondary);
+}
+.keyhint[hidden] {
+  display: none;
+}
+.keyhint b {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.keyhint kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 4px;
+  text-align: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  font: 600 11px/16px var(--font-ui);
+  color: var(--text-primary);
+}
+/* No keyboard to hint at on touch screens. */
+@media (hover: none) and (pointer: coarse) {
+  .keyhint {
+    display: none;
+  }
+}
+.launch {
+  padding: 14px 30px;
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  font: 700 22px/1 var(--font-display);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  background: var(--accent);
+  box-shadow:
+    0 0 0 6px rgba(63, 208, 255, 0.18),
+    0 10px 40px rgba(63, 208, 255, 0.35);
+  animation: launch-pulse 2s ease-in-out infinite;
+}
+.launch[hidden] {
+  display: none;
+}
+.launch:hover {
+  filter: brightness(1.1);
+}
+@keyframes launch-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 6px rgba(63, 208, 255, 0.18),
+      0 10px 40px rgba(63, 208, 255, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 14px rgba(63, 208, 255, 0.06),
+      0 10px 50px rgba(63, 208, 255, 0.45);
+  }
+}
+
+/* ── Tweak card (top right) ────────────────────────────────────────────── */
+.tweak {
+  position: fixed;
+  right: 16px;
+  top: var(--top-h);
+  z-index: 4;
+  width: 270px;
+  max-height: calc(100dvh - var(--top-h) - var(--dock-h) - 16px);
+  overflow-y: auto;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.tweak-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 6px;
+}
+.tweak-title {
+  font: 700 15px/1 var(--font-display);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.tweak.collapsed .tweak-body {
+  display: none;
+}
+.tweak-body {
+  padding: 0 12px 12px;
+  display: grid;
+  gap: 10px;
+}
+.knob {
+  display: grid;
+  gap: 3px;
+}
+.knob-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.knob-label {
+  color: var(--text-secondary);
+}
+.knob-value {
+  font: 700 15px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.knob input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+  margin: 0;
+}
+.knob-hint {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.status-line {
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+.status-line.ok {
+  background: rgba(51, 214, 159, 0.12);
+  border: 1px solid rgba(51, 214, 159, 0.35);
+  color: #b8f3df;
+}
+.status-line.bad {
+  background: rgba(255, 90, 110, 0.14);
+  border: 1px solid rgba(255, 90, 110, 0.45);
+  color: #ffd3d9;
+}
+/* What the card adjusted to keep the hop flyable (e.g. the time in the air). */
+.tweak-note {
+  margin-top: -2px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.tweak-note[hidden] {
+  display: none;
+}
+.switches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.switch input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+/* Kept in view at the bottom of the card while it scrolls (a short window, or a long legend
+   pushing the card down). */
+.tweak-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 6px;
+  margin: 0 -12px -12px;
+  padding: 8px 12px 12px;
+  background: rgb(11, 15, 22); /* opaque: the rows scrolling under it don't show through */
+  border-top: 1px solid var(--border);
+}
+.tweak-actions .chip {
+  flex: 1;
+}
+
+/* ── Result strip (how the run went), at the bottom left above the HUD ─── */
+.endcard {
+  /* At the bottom right of the HUD (where Launch sits while paused), clear of the flight;
+     above the problem notice, which would otherwise hide its headline in short windows. */
+  position: fixed;
+  left: calc(var(--hud-right, 0px) + 16px);
+  bottom: calc(var(--dock-h) + 14px);
+  z-index: 11;
+  width: min(560px, calc(100vw - var(--hud-right, 0px) - 330px));
+  padding: 10px 12px 10px 14px;
+  border-radius: 14px;
+  background: var(--glass-strong);
+  border: 1px solid var(--border-strong);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  animation: rise 0.25s ease-out;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'head head' 'stats actions';
+  gap: 8px 12px;
+  align-items: end;
+}
+.endcard[hidden] {
+  display: none;
+}
+@keyframes rise {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+}
+.endcard-head {
+  grid-area: head;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.endcard h2 {
+  margin: 0;
+  flex: none;
+  font: 700 22px/1.05 var(--font-display);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.endcard.good h2 {
+  color: var(--status-good);
+}
+.endcard.bad h2 {
+  color: var(--status-critical);
+}
+.endcard .sub {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  color: var(--text-secondary);
+}
+.endcard .close {
+  flex: none;
+  align-self: start;
+  margin-left: auto; /* at the end, also where the line under the title is hidden (phones) */
+}
+/* After a few seconds the replay is what matters: just the headline and the buttons, in a
+   smaller strip (the numbers come back when the pointer is on it). */
+.endcard.compact {
+  grid-template-areas: 'head actions';
+  align-items: center;
+  width: auto;
+  max-width: min(560px, calc(100vw - var(--hud-right, 0px) - 330px));
+}
+.endcard.compact .stats,
+.endcard.compact .sub {
+  display: none;
+}
+.endcard.compact .endcard-actions {
+  flex-direction: row;
+}
+.stats {
+  grid-area: stats;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.stat {
+  padding: 5px 7px;
+  border-radius: 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+.stat-label {
+  color: var(--text-muted);
+  font: 700 10px/1 var(--font-display);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.stat-value {
+  font: 700 17px/1.2 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+  white-space: nowrap; /* "24,414 lbf" on one line */
+}
+.endcard-actions {
+  grid-area: actions;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Toasts: problems with the settings, and short notices ─────────────── */
+.toast-host {
+  position: fixed;
+  left: 50%;
+  top: var(--top-h);
+  z-index: 10;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 600px));
+  min-width: min(420px, calc(100vw - 24px));
+  display: grid;
+  gap: 8px;
+  transition: left 0.2s ease;
+}
+/* With the Lab open, centered in what is left of the view, as is Launch (above the HUD). */
+body.lab-open .toast-host {
+  left: calc((100vw - min(380px, 100vw)) / 2);
+  width: min(560px, calc(100vw - min(380px, 100vw) - 24px));
+  min-width: 0;
+}
+body.lab-open .cue {
+  left: calc((100vw - min(380px, 100vw)) / 2);
+  bottom: calc(var(--dock-h) + 118px);
+}
+.notice {
+  justify-self: center;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--glass-strong);
+  border: 1px solid var(--border-strong);
+  animation: pop-down 0.2s ease-out;
+}
+@keyframes pop-down {
+  from {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+}
+.alert-banner {
+  padding: 9px 12px 10px;
+  border-radius: var(--radius);
+  max-height: 40vh;
+  overflow-y: auto;
+  background: rgba(46, 10, 16, 0.9);
+  border: 1px solid var(--status-critical);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 30px rgba(255, 61, 90, 0.18);
+}
+.alert-banner[hidden] {
+  display: none;
+}
+.alert-banner h2 {
+  margin: 0 0 6px;
+  font: 700 15px/1.2 var(--font-display);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.alert-banner ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+.alert-banner li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+.alert-banner details {
+  margin-top: 6px;
+}
+.alert-url {
+  font-size: 12.5px;
+  margin-bottom: 8px;
+}
+.alert-url ul {
+  margin-top: 3px;
+}
+.alert-url li {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.alert-url + h2 {
+  padding-top: 7px;
+  border-top: 1px solid rgba(255, 90, 110, 0.4);
+}
+.alert-banner details ul {
+  margin-top: 6px;
+}
+.alert-banner summary {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.alert-banner button {
+  flex: none;
+  background: var(--status-critical);
+  color: #1a0505;
+  border: 0;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.alert-banner.flash {
+  animation: alert-flash 0.9s ease-out 2;
+}
+@keyframes alert-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 90, 110, 0.95);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgba(255, 90, 110, 0);
+  }
+}
+
+/* Incident markers in the 3D view. The label is offset up and to the right of its anchor (the
+   top of the marker's stem), so it never sits on the spot itself. */
+.incident-anchor {
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+.incident-label {
+  position: absolute;
+  left: 10px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(46, 10, 16, 0.9);
+  border: 1px solid var(--status-critical);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.incident-label.flip {
+  left: auto;
+  right: 10px;
+}
+.incident-label.active {
+  background: var(--status-critical);
+  color: #1a0505;
+}
+.incident-icon {
+  font-size: 13px;
+}
+.incident-time {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+/* An incident that is off-screen or behind a panel: a chip at the edge of the free view. */
+.incident-edge {
+  position: fixed;
+  z-index: 7;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--status-critical);
+  color: #1a0505;
+  border: 0;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+.incident-edge[hidden] {
+  display: none;
+}
+.incident-edge .arrow {
+  display: inline-block;
+}
+
+/* ── Lab drawer (right) ────────────────────────────────────────────────── */
+.lab {
+  /* Below the top bar, so Share / About / Lab stay reachable while it is open. */
+  position: fixed;
+  top: calc(var(--top-h) - 8px);
+  right: 0;
+  bottom: var(--dock-h);
+  z-index: 9;
+  width: min(380px, 100vw);
+  border-top-left-radius: var(--radius);
+  border-top: 1px solid var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-strong);
+  border-left: 1px solid var(--border-strong);
+  backdrop-filter: blur(16px);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45);
+  animation: slide-in 0.2s ease-out;
+  transition: bottom 0.2s ease;
+}
+.lab[hidden] {
+  display: none;
+}
+@keyframes slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+.lab-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 0 4px;
+  border-bottom: 1px solid var(--border);
+}
+.tabs {
+  display: flex;
+  flex: 1;
+}
+.tabs button {
+  flex: 1;
+  padding: 10px 6px;
+  background: none;
+  border: 0;
+  color: var(--text-secondary);
+  font: 700 14px/1 var(--font-display);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tabs button[aria-selected='true'] {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+}
+.lab-body {
+  overflow-y: auto;
+  flex: 1;
+}
+.panel {
+  padding: 12px 14px 18px;
+}
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.panel h3 {
+  margin: 16px 0 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.params-host {
+  padding: 8px 8px 16px;
+}
+
+.readouts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+}
+.readouts dt {
+  color: var(--text-secondary);
+}
+.readouts dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.bars {
+  display: grid;
+  gap: 4px;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: 34px 1fr 74px;
+  align-items: center;
+  gap: 8px;
+}
+.bar-id {
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.bar-track {
+  height: 12px;
+  background: var(--surface-2);
+  border-radius: 0 4px 4px 0;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+.bar-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+}
+.bar-row.over .bar-fill {
+  background: var(--status-critical);
+}
+.bar-row.over .bar-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.tile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 9px;
+}
+.tile-label {
+  color: var(--text-secondary);
+  font-size: 11.5px;
+}
+.tile-value {
+  font: 700 19px/1.2 var(--font-display);
+  margin: 1px 0;
+  font-variant-numeric: tabular-nums;
+}
+.tile-delta {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+.warnings {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.warnings li {
+  padding: 7px 9px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background: rgba(255, 90, 110, 0.12);
+  border: 1px solid rgba(255, 90, 110, 0.45);
+}
+.status-icon {
+  color: var(--status-critical);
+  margin-right: 4px;
+}
+.status-label {
+  font-weight: 600;
+  margin-right: 4px;
+}
+.ok {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+}
+.ok .status-icon {
+  color: var(--status-good);
+}
+details {
+  margin-top: 8px;
+}
+summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+.table-wrap {
+  max-height: 260px;
+  overflow: auto;
+  margin-top: 6px;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+th,
+td {
+  padding: 3px 4px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+th:nth-child(2),
+td:nth-child(2) {
+  text-align: left;
+}
+th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* The Parameters panel (lil-gui) sits in the Lab, in the site's colors. */
+.lab .lil-gui {
+  --background-color: transparent;
+  --widget-color: var(--surface-2);
+  --hover-color: #243046;
+  --focus-color: #2a3852;
+  --number-color: var(--accent);
+  --string-color: var(--status-good);
+  --text-color: var(--text-primary);
+  --title-background-color: var(--surface-1);
+  --title-text-color: var(--text-primary);
+  --font-family: var(--font-ui);
+  --font-size: 12px;
+  --input-font-size: 12px;
+  --widget-height: 22px;
+  --name-width: 48%;
+}
+.lab .lil-gui.lil-root {
+  width: auto;
+  position: static;
+  max-height: none;
+}
+/* The tab above already says Parameters (and the panel is never folded away here). */
+.lab .lil-gui.lil-root > .lil-title {
+  display: none;
+}
+.lab .lil-gui .lil-title {
+  font-weight: 650;
+}
+/* What the flight model means, the link to every setting's explanation, and the ⓘ hints. */
+.lab .lab-guide {
+  display: block;
+  margin: 4px 8px 6px;
+  color: var(--accent);
+  font-size: 12px;
+}
+.lab .lab-note,
+.lab .lab-hint {
+  margin: 2px 8px 8px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.lab .lab-hint a {
+  color: var(--accent);
+  white-space: nowrap;
+}
+.lab .lab-hint[hidden] {
+  display: none;
+}
+/* (Scoped past lil-gui's own button rule, which makes buttons full-width widgets.) */
+.lab .lil-gui .lab-info {
+  display: inline;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  margin: 0 3px 0 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.lab .lil-gui .lab-info:hover,
+.lab .lil-gui .lab-info[aria-expanded='true'] {
+  background: none;
+  color: var(--accent);
+}
+/* The Lab's Reset: a button like the others, not a list row (dimmed with nothing to reset). */
+.lab .lil-gui .lab-reset button {
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-1);
+  margin-top: 4px;
+}
+.lab .lil-gui .lab-reset button:hover {
+  background: var(--surface-2);
+}
+.lab .lil-gui .lab-reset.lil-disabled {
+  opacity: 0.55;
+}
+.lab .lil-gui .lab-hint .link-btn {
+  display: inline;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* ── Explore: a setting flown lower and higher (at the top of the Tweak card) ── */
+.explore {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.explore[hidden] {
+  display: none;
+}
+.explore-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.explore-title {
+  font: 700 13px/1 var(--font-display);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.explore p {
+  margin: 4px 0;
+}
+.explore-name a {
+  color: var(--accent);
+  white-space: nowrap;
+}
+.explore-hint,
+.explore-note {
+  color: var(--text-secondary);
+}
+.explore-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0 2px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+/* (Over the Lab's table rules, which are global.) */
+.explore-table th,
+.explore-table td,
+.explore-table th:nth-child(2),
+.explore-table td:nth-child(2) {
+  position: static;
+  padding: 2px 3px;
+  text-align: right;
+  background: none;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.explore-table thead th {
+  color: var(--text-primary);
+  vertical-align: bottom;
+}
+.explore-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.explore-buttons {
+  display: flex;
+  gap: 4px;
+}
+.explore.folded .explore-more {
+  display: none;
+}
+.explore.folded .explore-table thead th,
+.explore-table thead td {
+  border-bottom: 0;
+}
+/* Wide windows: the key hint beside Launch rather than above it, so the pair stays low,
+   below the line-up. */
+@media (min-width: 951px) and (min-height: 501px) {
+  .cue {
+    flex-direction: row-reverse;
+    align-items: center;
+  }
+}
+/* Wider while comparing, so the three runs' columns fit (phones size the card themselves). */
+@media (min-width: 701px) and (min-height: 501px) {
+  .tweak:has(> .explore:not([hidden])) {
+    width: 300px;
+  }
+}
+.explore-table tbody th {
+  text-align: left;
+  color: var(--text-muted);
+}
+.explore-table .key {
+  margin-right: 4px;
+}
+.explore-value {
+  font-weight: 650;
+}
+.explore-table .ok {
+  color: #33d69f;
+}
+.explore-table .bad {
+  color: #ff8a9a;
+}
+
+/* ── About dialog ──────────────────────────────────────────────────────── */
+.about {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  background: var(--glass-strong);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+/* The contact address, as a picture (contact.ts): as tall as a line of the text around it. */
+.about .contact-img {
+  height: 1.3em;
+  width: auto;
+  vertical-align: middle;
+}
+.about::backdrop,
+.confirm::backdrop {
+  background: rgba(3, 5, 8, 0.6);
+}
+/* A yes/no question (resetting on a phone). */
+.confirm {
+  width: min(360px, calc(100vw - 32px));
+  padding: 18px 20px 16px;
+  background: var(--glass-strong);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+.confirm h2 {
+  margin: 0 0 8px;
+  font: 700 20px/1.2 var(--font-display);
+  letter-spacing: 0.5px;
+}
+.confirm p {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.confirm-actions .chip {
+  min-width: 88px;
+}
+.about-inner {
+  padding: 20px 22px 18px;
+  overflow-y: auto;
+  max-height: calc(100vh - 50px);
+}
+.about h2 {
+  margin: 0 0 4px;
+  font: 700 26px/1.1 var(--font-display);
+  letter-spacing: 0.5px;
+}
+.about h3 {
+  margin: 16px 0 6px;
+  font: 700 14px/1.2 var(--font-display);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.about p,
+.about li {
+  color: var(--text-secondary);
+}
+.about a {
+  color: var(--accent);
+}
+.about ul {
+  padding-left: 18px;
+  margin: 6px 0;
+}
+.about kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 4px;
+  text-align: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  font: 600 11px/18px var(--font-ui);
+  color: var(--text-primary);
+}
+.about .close {
+  position: sticky;
+  top: 0;
+  float: right;
+}
+
+/* ── Dock: transport and charts ────────────────────────────────────────── */
+.dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--dock-h);
+  z-index: 5;
+  background: linear-gradient(to bottom, rgba(7, 9, 13, 0.92), var(--bg));
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: height 0.2s ease;
+}
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+.play {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  border: 0;
+  cursor: pointer;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 0 18px rgba(63, 208, 255, 0.35);
+}
+.speed {
+  display: flex;
+}
+.transport select {
+  padding: 6px 10px;
+}
+.scrub-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 80px;
+}
+#scrub {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  accent-color: var(--accent);
+}
+/* Aligned with the thumb's travel (the thumb is ≈16 px wide, so its center runs 8 px in from each end). */
+.scrub-mark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 3px;
+  margin-left: -1.5px;
+  left: calc(8px + (100% - 16px) * var(--f));
+  background: var(--status-critical);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.clock {
+  font: 700 15px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  min-width: 64px;
+  text-align: right;
+}
+.cams,
+.units {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-0);
+  border: 1px solid var(--border);
+}
+/* The camera row gives up width before anything is pushed off the dock: it scrolls. */
+.cams {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cams button,
+.units button {
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 5px 10px;
+  backdrop-filter: none;
+  white-space: nowrap;
+  flex: none;
+}
+body.charts-collapsed .charts-pager {
+  display: none;
+}
+.charts-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+/* (A plain chip whether open or not: the arrow says which.) */
+.chip.charts-toggle[aria-expanded='true'] {
+  background: var(--glass);
+  border-color: var(--border);
+  color: var(--text-primary);
+  font-weight: 400;
+}
+.charts-toggle .chev {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+body.charts-collapsed .charts-toggle .chev {
+  transform: rotate(180deg);
+}
+
+.charts-pager {
+  flex: 1;
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+/* ‹ ›: only where the charts swipe and there is more that way (main.ts). */
+.pager {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--glass-strong);
+  color: var(--text-primary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.pager:hover {
+  background: var(--surface-2);
+}
+.pager.prev {
+  left: 4px;
+}
+.pager.next {
+  right: 4px;
+}
+.pager[hidden] {
+  display: none;
+}
+
+.charts {
+  flex: 1;
+  min-width: 0;
+  scroll-padding-inline: 10px; /* (snapping keeps the padding, so a row that swipes starts at 0) */
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 0 10px 10px;
+  min-height: 0;
+}
+.chart {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.chart canvas {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+}
+.chart-tip {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 4px 7px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.tip-t {
+  color: var(--text-secondary);
+}
+.tip-v {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Source footage, picture-in-picture at the top left of the 3D view ─────
+   Under the top bar and any problem notice (--toast-h is its measured height), clear of the
+   line-up and the landing in the Footage cam view, the HUD, Launch and the Tweak card. */
+.footage {
+  position: fixed;
+  left: 12px;
+  top: calc(var(--top-h) + var(--toast-h, 0px) + 6px);
+  z-index: 6;
+  /* Scales with the 3D view: at most 30% of its width, and short enough (16:9 frame plus the
+     bar) to stay within about 40% of its height; 384px at most, 220px at least. */
+  width: clamp(220px, min(30vw, calc((100dvh - var(--dock-h)) * 0.6)), 384px);
+  background: var(--surface-0);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  transition: top 0.2s ease;
+}
+.footage.large {
+  width: clamp(220px, min(60vw, calc((100dvh - var(--dock-h)) * 1.2)), 768px);
+}
+.footage[hidden] {
+  display: none;
+}
+/* Never down over the HUD: --footage-max-w is measured from the room above it (main.ts). */
+.footage,
+.footage.large {
+  max-width: var(--footage-max-w, none);
+}
+.footage.no-room {
+  display: none;
+}
+/* Dragged somewhere else by the visitor (footage.ts): it stays where it was put (between the
+   top bar and the dock), at its usual size (the cap above is measured for the usual place),
+   over the HUD but under Launch, the Lab, the notices and the result strip. */
+.footage.moved {
+  transition: none;
+  max-width: none;
+}
+.footage.dragging {
+  user-select: none;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+}
+.footage-grip,
+.footage-frame {
+  touch-action: none; /* a drag moves the window, not the page */
+}
+.footage-grip {
+  flex: none;
+  padding: 0 2px 0 3px;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 24px;
+  cursor: grab;
+}
+.footage.dragging .footage-grip,
+.footage.dragging .footage-frame {
+  cursor: grabbing;
+}
+.footage-frame {
+  cursor: grab;
+}
+.footage-bar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px;
+  background: var(--surface-1);
+}
+.footage-bar select,
+.footage-bar button {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 11.5px;
+  cursor: pointer;
+  min-height: 24px;
+  min-width: 24px;
+}
+.footage-bar select {
+  flex: 1;
+  min-width: 72px;
+}
+.footage {
+  container-type: inline-size;
+}
+/* A narrow window keeps the view picker readable; the Footage cam preset matches the camera. */
+@container (max-width: 239px) {
+  .footage-bar .match {
+    display: none;
+  }
+}
+/* Narrowest: the view's name keeps the room (the picture itself still drags the window). */
+@container (max-width: 200px) {
+  .footage-grip {
+    display: none;
+  }
+}
+/* Mid widths: "Match", on one line. */
+@container (max-width: 330px) {
+  .match-more {
+    display: none;
+  }
+}
+.footage-bar button {
+  white-space: nowrap;
+}
+.footage-bar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.footage-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+.footage-frame canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.footage-stamp {
+  position: absolute;
+  left: 6px;
+  top: 5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(7, 9, 13, 0.6);
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.footage-status {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+  padding: 4px 8px;
+  background: rgba(7, 9, 13, 0.78);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+}
+.footage-status.show {
+  display: block;
+}
+.footage-credit {
+  display: block;
+  padding: 3px 8px 4px;
+  background: var(--surface-1);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.footage-credit:hover {
+  color: var(--accent);
+}
+
+/* ── Motion, touch, notches ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+/* Fingers need bigger targets than a mouse (≥ 40 px; 44 px up top: site-nav.css). */
+@media (pointer: coarse) {
+  .chip,
+  .icon-btn,
+  .transport select,
+  .cams button,
+  .units button {
+    min-height: 40px;
+    min-width: 40px;
+  }
+  .footage-bar select,
+  .footage-bar button {
+    min-height: 34px;
+    min-width: 34px;
+  }
+  .alert-banner button,
+  .incident-edge {
+    min-height: 36px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .brand {
+    min-height: 44px;
+  }
+  /* The Tweak card's switches and sliders, finger-sized. */
+  .switch {
+    min-height: 40px;
+    font-size: 14px;
+  }
+  .switch input {
+    width: 20px;
+    height: 20px;
+  }
+  .knob input[type='range'] {
+    height: 32px;
+  }
+  /* No keyboard to hint at. */
+  .about .keys {
+    display: none;
+  }
+}
+.topbar {
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+.dock {
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* ── Small screens ─────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .tagline {
+    display: none;
+  }
+}
+@media (max-width: 1150px) {
+  /* Not enough width for the result strip beside the HUD: over it for its few seconds
+     (above it, it would cover the footage window, just when it's worth comparing). */
+  .endcard {
+    left: 16px;
+    bottom: calc(var(--dock-h) + 14px);
+    width: min(560px, calc(100vw - 340px));
+  }
+}
+@media (max-width: 950px) {
+  /* Not enough width beside the HUD (the Tweak card takes the right): above it instead. */
+  .cue {
+    left: 50%;
+    bottom: calc(var(--dock-h) + 118px);
+  }
+}
+@media (max-width: 950px) and (min-width: 701px) and (min-height: 501px) {
+  /* The Tweak card runs down the right side: Launch ends just left of it, clear of its
+     switches and of the footage at the top left. */
+  .cue {
+    left: calc(100vw - 270px - 16px - 12px);
+    transform: translateX(-100%);
+  }
+  body.lab-open .cue {
+    transform: translateX(-50%);
+  }
+  /* The transport in two rows (the rows: at the end of this file). */
+  :root {
+    --dock-h: 246px;
+  }
+  body.charts-collapsed {
+    --dock-h: 98px;
+  }
+}
+@media (max-width: 900px) {
+  .toast-host {
+    width: calc(100vw - 24px);
+    min-width: 0;
+  }
+  /* Four charts in a swipeable row: a 2 × 2 grid would make each too short to read. */
+  .charts {
+    grid-template-columns: repeat(4, 46vw);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+  .chart {
+    scroll-snap-align: start;
+  }
+  .cams button {
+    padding: 5px 7px;
+  }
+}
+@media (max-width: 900px) and (min-width: 701px) {
+  /* Left of the Tweak card, so the card stays usable to fix the problem. */
+  .toast-host {
+    left: 12px;
+    transform: none;
+    width: calc(100vw - 270px - 40px);
+  }
+  body.lab-open .toast-host {
+    transform: translateX(-50%);
+  } /* the Lab covers the card */
+}
+/* In the dock only the scrubber and the camera row give up width. */
+.transport > .chip,
+.transport > .units,
+.transport > .icon-btn,
+.transport > .play,
+.clock {
+  flex: none;
+}
+
+/* Phones, portrait (narrow and not short; short windows of any width use the layout below). */
+@media (max-width: 700px) and (min-height: 501px) {
+  :root {
+    --dock-h: 310px;
+    --top-h: 56px;
+  }
+  body.charts-collapsed {
+    --dock-h: 162px;
+  }
+  .topbar {
+    padding: max(8px, env(safe-area-inset-top)) 10px 0;
+    gap: 4px 8px;
+  }
+  .wordmark {
+    font-size: 20px;
+  }
+  .logo {
+    width: 32px;
+  }
+  .top-actions .chip {
+    padding: 5px 10px;
+  }
+  /* Transport in three rows: play, scrubber, clock; speed and cameras; footage, units, charts. */
+  .transport {
+    flex-wrap: wrap;
+    gap: 6px 6px;
+    padding: 6px 8px;
+  }
+  .play {
+    order: 0;
+  }
+  .scrub-wrap {
+    order: 1;
+    flex: 1 1 0;
+  }
+  .clock {
+    order: 2;
+    min-width: 56px;
+    font-size: 13px;
+  }
+  .speed {
+    order: 4;
+  }
+  .cams {
+    order: 5;
+    overflow-x: auto;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  #footage-toggle,
+  .units,
+  #charts-toggle {
+    order: 7;
+  }
+  /* Line breaks between the rows. */
+  .transport::before,
+  .transport::after {
+    content: '';
+    flex-basis: 100%;
+    height: 0;
+  }
+  .transport::before {
+    order: 3;
+  }
+  .transport::after {
+    order: 6;
+  }
+  .charts {
+    grid-template-columns: repeat(4, 72vw);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+  .chart {
+    scroll-snap-align: start;
+  }
+  /* The Tweak card becomes a sheet over the bottom of the view; collapsed by default. */
+  /* Never up under a problem notice, so its header (and fold button) stays reachable. */
+  .tweak {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: calc(var(--dock-h) + 8px);
+    width: auto;
+    max-height: min(55dvh, calc(100dvh - var(--top-h) - var(--toast-h, 0px) - var(--dock-h) - 16px));
+  }
+  .hud {
+    left: 8px;
+    bottom: calc(var(--dock-h) + 66px);
+    gap: 5px;
+  }
+  .gauge {
+    min-width: 0;
+    padding: 5px 8px 6px;
+  }
+  .gauge-value {
+    font-size: 20px;
+  }
+  .roll-dial {
+    width: 48px;
+    height: 48px;
+  }
+  /* Over the HUD, whose numbers are the approach's or the landing's while Launch shows: the
+     little 3D view above stays clear for the hop. */
+  .cue {
+    bottom: calc(var(--dock-h) + 80px);
+  }
+  .launch {
+    font-size: 18px;
+    padding: 12px 24px;
+  }
+  .lab {
+    width: 100vw;
+  }
+  body.lab-open .cue {
+    display: none;
+  } /* the Lab covers the view */
+  body:has(.tweak:not(.collapsed)) .cue {
+    display: none;
+  } /* nor over the open sheet's sliders */
+  /* Above the folded comparison at the top of the sheet; not over the unfolded one. */
+  body:has(.explore:not([hidden])) .cue {
+    bottom: calc(var(--dock-h) + var(--tweak-h, 160px) + 18px);
+  }
+  body:has(.explore:not([hidden]):not(.folded)) .cue {
+    display: none;
+  }
+  /* Launch sits over the HUD here: its gauges step aside rather than peek out from under it
+     (they read the approach's zeros then anyway); the phase tag stays. Under the Tweak sheet
+     or a comparison, the whole HUD does. */
+  body:has(#launch:not([hidden])) .hud > :not(.hud-phase) {
+    visibility: hidden;
+  }
+  body:has(.tweak:not(.collapsed)) .hud,
+  body:has(.explore:not([hidden])) .hud {
+    visibility: hidden;
+  }
+  /* About half the width, so the hop beside and below it stays the main picture (⤢ enlarges). */
+  .footage {
+    left: 8px;
+    width: min(52vw, 300px);
+  }
+  /* The result strip covers the HUD and the Tweak sheet for its few seconds. */
+  .endcard {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    bottom: calc(var(--dock-h) + 8px);
+    grid-template-columns: 1fr;
+    grid-template-areas: 'head' 'stats' 'actions';
+  }
+  .endcard h2 {
+    font-size: 19px;
+  }
+  .endcard .sub {
+    display: none;
+  }
+  .endcard-actions {
+    flex-direction: row;
+  }
+  .endcard-actions .chip {
+    flex: 1;
+  }
+  .stat-value {
+    font-size: 15px;
+  }
+  /* The Lab covers the whole width; its Results tab lists the problems instead. */
+  body.lab-open .alert-banner {
+    display: none;
+  }
+}
+
+/* Phones, landscape (and any short window): little height, so everything gets compact and
+   the 3D view keeps it. */
+@media (max-height: 500px) {
+  :root {
+    --dock-h: 170px;
+    --top-h: 46px;
+  }
+  .alert-banner {
+    max-height: 28dvh;
+    font-size: 12px;
+    padding: 6px 10px 7px;
+  }
+  /* Left of the Tweak card, so it stays reachable to fix the problem. */
+  .toast-host {
+    left: 8px;
+    transform: none;
+    width: calc(100vw - 280px);
+    min-width: 0;
+  }
+  /* With the Lab open: left of it (it is narrower here), and Launch beside the HUD there. */
+  body.lab-open .toast-host {
+    left: 8px;
+    width: calc(100vw - min(360px, 60vw) - 16px);
+  }
+  /* No room for the HUD beside the Lab here, and the Lab's Live tab shows the same numbers. */
+  body.lab-open .hud {
+    display: none;
+  }
+  body.lab-open .cue {
+    left: calc(100vw - min(360px, 60vw) - 100px);
+    bottom: calc(var(--dock-h) + 10px);
+  }
+  body.lab-open .launch {
+    padding: 9px 16px;
+  }
+  body.lab-open .keyhint {
+    display: none;
+  } /* no room beside the Lab */
+  body.charts-collapsed {
+    --dock-h: 58px;
+  }
+  .topbar {
+    padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0
+      max(10px, env(safe-area-inset-left));
+  }
+  .wordmark {
+    font-size: 18px;
+  }
+  .logo {
+    width: 28px;
+  }
+  .legend {
+    display: none;
+  }
+  .transport {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  /* Compact, so it keeps its place beside the scrubber. */
+  .speed select {
+    padding: 4px 6px;
+  }
+  .scrub-wrap {
+    min-width: 90px;
+    flex: 1 1 90px;
+  }
+  .clock {
+    flex: none;
+    min-width: 52px;
+    font-size: 13px;
+  }
+  .cams {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+  }
+  #footage-toggle {
+    white-space: nowrap;
+  }
+  .tweak {
+    top: var(--top-h);
+    bottom: calc(var(--dock-h) + 8px);
+    right: 8px;
+    width: 250px;
+    max-height: none;
+  }
+  .tweak.collapsed {
+    bottom: auto;
+  }
+  .hud {
+    left: 8px;
+    bottom: calc(var(--dock-h) + 8px);
+    gap: 5px;
+  }
+  .hud-phase {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+  .gauge {
+    min-width: 0;
+    padding: 4px 8px 5px;
+  }
+  .gauge-label {
+    font-size: 9.5px;
+  }
+  .gauge-value {
+    font-size: 18px;
+  }
+  .roll-dial {
+    width: 40px;
+    height: 40px;
+  }
+  /* Beside the HUD, low, where the problem notice at the top can't cover it. */
+  .cue {
+    left: max(50%, calc(var(--hud-right, 0px) + 100px));
+    bottom: calc(var(--dock-h) + 10px);
+    gap: 6px;
+  }
+  .launch {
+    font-size: 16px;
+    padding: 10px 22px;
+  }
+  /* The result strip covers the HUD for its few seconds: there is no room above it. */
+  .endcard {
+    left: 8px;
+    bottom: calc(var(--dock-h) + 8px);
+    width: min(560px, calc(100vw - 16px));
+    padding: 7px 10px;
+    grid-template-areas: 'head head' 'stats stats';
+  }
+  .endcard-actions {
+    display: none;
+  } /* Share and the Lab are in the top bar */
+  .endcard h2 {
+    font-size: 18px;
+  }
+  .stat-value {
+    font-size: 15px;
+  }
+  .lab {
+    width: min(360px, 60vw);
+  }
+  .footage {
+    top: calc(var(--top-h) + var(--toast-h, 0px));
+    left: 8px;
+    width: min(30vw, 220px);
+  }
+  body.lab-open .footage {
+    width: min(26vw, 190px);
+  }
+  .charts {
+    grid-template-columns: repeat(4, 46vw);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+  .chart {
+    scroll-snap-align: start;
+  }
+}
+
+/* ── Late rules (after the layout blocks above, so they win) ─────────────── */
+
+/* Two transport rows wherever one would squeeze the scrubber or the cameras: narrow desktop
+   windows, and small phones on their side. Play, speed, scrubber, clock; then the cameras,
+   the footage, units and the charts. */
+@media (max-width: 950px) and (min-width: 701px) and (min-height: 501px), (max-height: 500px) and (max-width: 760px) {
+  .transport {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .scrub-wrap {
+    order: 1;
+    flex: 1 1 0;
+  }
+  .clock {
+    order: 2;
+  }
+  .transport::after {
+    content: '';
+    order: 3;
+    flex-basis: 100%;
+    height: 0;
+  }
+  /* (From a zero basis, so the second row never wraps again: the cameras take the room the
+     others leave, up to their own width, and scroll beyond it.) */
+  .cams {
+    order: 4;
+    flex: 1 1 0;
+    max-width: max-content;
+    margin-right: auto;
+  }
+  #footage-toggle,
+  .units,
+  #charts-toggle {
+    order: 5;
+  }
+}
+@media (max-height: 500px) and (max-width: 760px) {
+  :root {
+    --dock-h: 222px;
+  }
+  body.charts-collapsed {
+    --dock-h: 110px;
+  }
+}
+/* Phones: the shrunk result strip spans the screen like the full one (its desktop width is
+   measured beside the HUD, which a phone has no room for), and is just the headline and ✕
+   (Share and the Lab are in the top bar). */
+@media (max-width: 700px), (max-height: 500px) {
+  .endcard.compact {
+    max-width: none;
+    grid-template-columns: 1fr;
+    grid-template-areas: 'head';
+  }
+  .endcard.compact .endcard-actions {
+    display: none;
+  }
+}
+/* The narrowest phones: the wordmark makes room for Tweak, Lab and ☰ (the logo stays). */
+@media (max-width: 340px) {
+  .topbar .wordmark {
+    display: none;
+  }
+}

@@ -1,0 +1,194 @@
+/* The site's navigation, shared by the simulation's top bar (style.css) and the reading
+   pages' header (page.css): chip buttons, the site links (src/partials/site-links.html),
+   and on a phone the ☰ menu they fold into (src/ui/site-menu.ts). */
+
+.chip {
+  background: var(--glass);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 13px;
+  cursor: pointer;
+  line-height: 1.2;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.chip:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+.chip-accent {
+  background: var(--accent-soft);
+  border-color: rgba(63, 208, 255, 0.5);
+  color: var(--accent);
+  font-weight: 650;
+}
+.chip[aria-pressed='true'],
+.chip[aria-expanded='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 650;
+}
+/* With nothing to do just now (e.g. Reset at the real stunt's settings): quieter, still readable. */
+.chip[aria-disabled='true'],
+.chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.chip[aria-disabled='true']:hover,
+.chip:disabled:hover {
+  border-color: var(--border);
+  background: var(--glass);
+}
+/* Link chips look like the button chips. */
+a.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px; /* (a flex row drops the space before "↗") */
+  text-decoration: none;
+}
+
+.top-actions {
+  display: flex;
+  gap: 6px;
+}
+/* The links: chips in the row on wider screens; on a phone, a menu under ☰. */
+.site-menu {
+  display: contents;
+}
+/* The pages to read and the outside links: quieter than the simulation's own actions. */
+.chip-quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+  backdrop-filter: none;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+.chip-quiet:hover {
+  color: var(--text-primary);
+}
+/* The page you're on (the pages plugin marks it). */
+.chip-quiet[aria-current='page'] {
+  color: var(--accent);
+}
+.chip[aria-current='page']:not(.chip-quiet) {
+  color: var(--accent);
+  border-color: rgba(63, 208, 255, 0.5);
+}
+.ext {
+  font-size: 11px;
+  opacity: 0.75;
+}
+/* The GitHub link: a chip with the mark. */
+.chip-github {
+  justify-content: center;
+  gap: 6px;
+}
+.gh-mark {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+/* Narrow desktop windows: the quieter links close up, and GitHub is just its mark, so the
+   row still fits beside the wordmark. */
+@media (max-width: 860px) and (min-width: 701px) and (min-height: 501px) {
+  .chip-quiet {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+  .chip-quiet .ext,
+  .gh-label {
+    display: none;
+  }
+}
+.menu-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 6px 2px;
+  background: var(--border-strong);
+}
+.menu-btn {
+  display: none;
+}
+
+@media (max-width: 700px), (max-height: 500px) {
+  .top-actions {
+    position: relative;
+  }
+  /* The bar's chips need a visible edge over a dark page or the night scene (≥ 3:1). */
+  .top-actions > .chip:not(.chip-accent, .reset-btn, [aria-expanded='true']) {
+    background: var(--surface-1);
+    border-color: rgba(150, 190, 255, 0.5);
+  }
+  .menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+  }
+  .site-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 30;
+    min-width: 200px;
+    max-height: calc(100dvh - var(--top-h, 64px) - 8px);
+    overflow-y: auto;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
+    background: var(--glass-strong);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+  .site-menu.open {
+    display: flex;
+  }
+  .site-menu .chip {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 12px;
+    border-color: transparent;
+    border-radius: 8px;
+    background: none;
+    color: var(--text-primary);
+    text-shadow: none;
+    font-size: 15px;
+    text-align: left;
+  }
+  .site-menu .chip:hover,
+  .site-menu .chip:focus-visible {
+    background: var(--surface-2);
+  }
+  .site-menu .chip[aria-current='page'] {
+    color: var(--accent);
+    border-color: transparent; /* (in the menu, just its color) */
+  }
+  .menu-sep {
+    width: auto;
+    height: 1px;
+    margin: 4px 8px;
+  }
+  .ext {
+    margin-left: auto;
+  }
+}
+
+/* Fingers need bigger targets than a mouse (44 px up top). */
+@media (pointer: coarse) {
+  .top-actions .chip {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
